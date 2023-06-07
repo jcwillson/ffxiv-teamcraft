@@ -43,66 +43,8 @@ export class PlanningFormulaOptimizer {
         return day;
       }
 
-      // Okay, if we're here, we know what'll peak and how, so we want to build an optimized value route now
-      const [best, combo] = this.findBestAndComboObjects(projectedSupplyObjects, objectsUsage);
-
-      let totalTime = 0;
-      let useComboItem = combo.craftworksEntry.craftingTime + best.craftworksEntry.craftingTime <= 12;
-      let projectedTime = useComboItem ? combo.craftworksEntry.craftingTime : best.craftworksEntry.craftingTime;
-      while (totalTime + projectedTime <= 24) {
-        const item = JSON.parse(JSON.stringify(useComboItem ? combo : best));
-        day.planning.push(item);
-        useComboItem = !useComboItem;
-        totalTime += item.craftworksEntry.craftingTime;
-        objectsUsage[item.id] = (objectsUsage[item.id] || 0) + this.workshops * (totalTime === 0 ? 1 : 2);
-        // If our best changes, we cannot ensure it will combo so we go to one at a time
-        const [bestChange, _] = this.findBestAndComboObjects(projectedSupplyObjects, objectsUsage);
-        if (bestChange !== best) {
-          break;
-        }
-        projectedTime = useComboItem ? combo.craftworksEntry.craftingTime + best.craftworksEntry.craftingTime : best.craftworksEntry.craftingTime;
-      }
-      //Inverted schedule detection for *84 schedules
-      const planLength = day.planning.length;
-      if (planLength >= 2 && day.planning[planLength - 1].craftworksEntry.craftingTime == 4 && day.planning[planLength - 2].craftworksEntry.craftingTime == 8) {
-        let item = day.planning[planLength - 2];
-        day.planning.push(item);
-        totalTime += item.craftworksEntry.craftingTime;
-        objectsUsage[item.id] = objectsUsage[item.id] + this.workshops * 2;
-        item = day.planning[0];
-        totalTime -= item.craftworksEntry.craftingTime;
-        objectsUsage[item.id] = objectsUsage[item.id] - this.workshops;
-        day.planning.shift();
-      }
-      while (totalTime < 24) {
-        const bestFirstItem = projectedSupplyObjects.filter(obj => {
-          return obj.craftworksEntry.craftingTime <= (24 - totalTime)
-            && obj.craftworksEntry.craftingTime != (22 - totalTime)
-            && obj.craftworksEntry.themes.some(t => day.planning[0].craftworksEntry.themes.includes(t))
-            && obj.id !== day.planning[0].id;
-        }).sort((a, b) => {
-          return this.getBoostedValue(b, objectsUsage[b.id]) - this.getBoostedValue(a, objectsUsage[a.id]);
-        })[0];
-        if (bestFirstItem) {
-          day.planning.unshift(bestFirstItem);
-          totalTime += bestFirstItem.craftworksEntry.craftingTime;
-        } else {
-          const noComboFirstItem = projectedSupplyObjects.filter(obj => {
-            return obj.craftworksEntry.craftingTime <= (24 - totalTime)
-              && obj.craftworksEntry.craftingTime != (22 - totalTime)
-              && obj.id !== day.planning[0].id;
-          }).sort((a, b) => {
-            return this.getBoostedValue(b, objectsUsage[b.id]) - this.getBoostedValue(a, objectsUsage[a.id]);
-          })[0];
-          if (noComboFirstItem) {
-            day.planning.unshift(noComboFirstItem);
-            totalTime += noComboFirstItem.craftworksEntry.craftingTime;
-          }
-          else {
-            break;
-          }
-        }
-      }
+      day.planning = this.findSchedule(day.planning, projectedSupplyObjects, objectsUsage);
+      
       const result = this.simulator.getScoreForDay(day, groove);
       day.score = result.score;
       groove = result.groove;
@@ -115,6 +57,78 @@ export class PlanningFormulaOptimizer {
       planning,
       score
     };
+  }
+
+  private findSchedule(planning: any[], projectedSupplyObjects: CraftworksObject[], objectsUsage: Record<number, number>): any[] {
+    let totalTime = 0;
+    const planningr = [];
+    //Workshop 1-3
+    if (planning.length == 0) {
+      // Okay, if we're here, we know what'll peak and how, so we want to build an optimized value route now
+      const [best, combo] = this.findBestAndComboObjects(projectedSupplyObjects, objectsUsage);
+
+      let useComboItem = combo.craftworksEntry.craftingTime + best.craftworksEntry.craftingTime <= 12;
+      let projectedTime = useComboItem ? combo.craftworksEntry.craftingTime : best.craftworksEntry.craftingTime;
+      while (totalTime + projectedTime <= 24) {
+        const item = JSON.parse(JSON.stringify(useComboItem ? combo : best));
+        planningr.push(item);
+        useComboItem = !useComboItem;
+        totalTime += item.craftworksEntry.craftingTime;
+        objectsUsage[item.id] = (objectsUsage[item.id] || 0) + this.workshops * (totalTime === 0 ? 1 : 2);
+        // If our best changes, we cannot ensure it will combo so we go to one at a time
+        const [bestChange, _] = this.findBestAndComboObjects(projectedSupplyObjects, objectsUsage);
+        if (bestChange !== best) {
+          break;
+        }
+        projectedTime = useComboItem ? combo.craftworksEntry.craftingTime + best.craftworksEntry.craftingTime : best.craftworksEntry.craftingTime;
+      }
+      //Inverted schedule detection for *84 schedules
+      const planLength = planningr.length;
+      if (planLength >= 2 && planningr[planLength - 1].craftworksEntry.craftingTime == 4 && planningr[planLength - 2].craftworksEntry.craftingTime == 8) {
+        let item = planningr[planLength - 2];
+        planningr.push(item);
+        totalTime += item.craftworksEntry.craftingTime;
+        objectsUsage[item.id] = objectsUsage[item.id] + this.workshops * 2;
+        item = planningr[0];
+        totalTime -= item.craftworksEntry.craftingTime;
+        objectsUsage[item.id] = objectsUsage[item.id] - this.workshops;
+        planningr.shift();
+      }
+    }
+    //Workshop 4-6
+    /*else {
+
+    }*/
+    while (totalTime < 24) {
+      const bestFirstItem = projectedSupplyObjects.filter(obj => {
+        return obj.craftworksEntry.craftingTime <= (24 - totalTime)
+          && obj.craftworksEntry.craftingTime != (22 - totalTime)
+          && obj.craftworksEntry.themes.some(t => planningr[0].craftworksEntry.themes.includes(t))
+          && obj.id !== planningr[0].id;
+      }).sort((a, b) => {
+        return this.getBoostedValue(b, objectsUsage[b.id]) - this.getBoostedValue(a, objectsUsage[a.id]);
+      })[0];
+      if (bestFirstItem) {
+        planningr.unshift(bestFirstItem);
+        totalTime += bestFirstItem.craftworksEntry.craftingTime;
+      } else {
+        const noComboFirstItem = projectedSupplyObjects.filter(obj => {
+          return obj.craftworksEntry.craftingTime <= (24 - totalTime)
+            && obj.craftworksEntry.craftingTime != (22 - totalTime)
+            && obj.id !== planningr[0].id;
+        }).sort((a, b) => {
+          return this.getBoostedValue(b, objectsUsage[b.id]) - this.getBoostedValue(a, objectsUsage[a.id]);
+        })[0];
+        if (noComboFirstItem) {
+          planningr.unshift(noComboFirstItem);
+          totalTime += noComboFirstItem.craftworksEntry.craftingTime;
+        }
+        else {
+          break;
+        }
+      }
+    }
+    return planningr;
   }
 
   private findBestAndComboObjects(projectedSupplyObjects: CraftworksObject[], objectsUsage: Record<number, number>): [CraftworksObject, CraftworksObject, CraftworksObject] {
