@@ -22,6 +22,7 @@ export class IslandWorkshopSimulator {
         return acc;
       }
       const dayResult = this.getScoreForDay(day, acc.groove);
+      //TODO: verify no changes need to be made here for double plan
       acc.score += dayResult.score;
       acc.groove = dayResult.groove;
       return acc;
@@ -52,5 +53,6 @@ export class IslandWorkshopSimulator {
       score: 0,
       groove: baseGroove
     });
+    //TODO: incorporate planningSet2
   }
 }

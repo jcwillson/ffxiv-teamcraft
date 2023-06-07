@@ -24,7 +24,8 @@ export class PlanningFormulaOptimizer {
         unknown: false,
         score: 0,
         groove: 0,
-        planning: []
+        planning: [],
+        planningSet2: []
       };
       if (i === 0 || i === this.secondRestDay) {
         // First of all, D1 and D2 are rest days to make things easier
@@ -43,6 +44,7 @@ export class PlanningFormulaOptimizer {
         return day;
       }
 
+      //Workshop 1-3
       day.planning = this.findSchedule(day.planning, projectedSupplyObjects, objectsUsage);
       
       const result = this.simulator.getScoreForDay(day, groove);
@@ -62,7 +64,7 @@ export class PlanningFormulaOptimizer {
   private findSchedule(planning: any[], projectedSupplyObjects: CraftworksObject[], objectsUsage: Record<number, number>): any[] {
     let totalTime = 0;
     const planningr = [];
-    //Workshop 1-3
+    //Workshop 1-3, and 4-6 with no prefill
     if (planning.length == 0) {
       // Okay, if we're here, we know what'll peak and how, so we want to build an optimized value route now
       const [best, combo] = this.findBestAndComboObjects(projectedSupplyObjects, objectsUsage);
@@ -95,10 +97,7 @@ export class PlanningFormulaOptimizer {
         planningr.shift();
       }
     }
-    //Workshop 4-6
-    /*else {
-
-    }*/
+    //Workshop 4-6 skips to here with a prefilled schedule
     while (totalTime < 24) {
       const bestFirstItem = projectedSupplyObjects.filter(obj => {
         return obj.craftworksEntry.craftingTime <= (24 - totalTime)

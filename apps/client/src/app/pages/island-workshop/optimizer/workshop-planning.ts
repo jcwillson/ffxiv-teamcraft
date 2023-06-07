@@ -5,5 +5,6 @@ export interface WorkshopPlanning {
   unknown?: boolean;
   score: number;
   groove: number;
-  planning: (CraftworksObject & { alternative: CraftworksObject })[];
+  planning: (CraftworksObject & { alternative: CraftworksObject })[],
+  planningSet2: (CraftworksObject & { alternative: CraftworksObject })[];
 }
